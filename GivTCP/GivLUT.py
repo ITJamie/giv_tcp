@@ -25,7 +25,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 from sharedlog import SharedTimedRotatingFileHandler   # noqa: F401  (imported from here by REST, write and influx)
 
-logger = logging.getLogger("GivLUT")
+logger = logging.getLogger("read_logger")     # GivTCP's main log (GivLUT.logger), which has the log file handler
 _client = Client(GiV_Settings.invertorIP,8899)
 _connection_lock = asyncio.Lock()
 
@@ -277,6 +277,12 @@ class GivLUT:
     def save_writerequests(requests):
         """Replace the write request queue in one step, so the read loop never reads a partly written file"""
         GivLUT.save_pickle(GivLUT.writerequests, requests)
+
+    def queue_write(command, payload):
+        """Ask the read loop to run a write command on its connection, with no reply (as an MQTT command is)"""
+        requests=(GivLUT.load_pickle(GivLUT.writerequests) if exists(GivLUT.writerequests) else None) or []
+        requests.append([command,payload,False])
+        GivLUT.save_writerequests(requests)
 
     def put_regcache(regCacheStack):
         with GivLUT.fileLock(GivLUT.cachelockfile):     # so it can't land in the middle of an update_regcache()
